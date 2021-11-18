@@ -1,0 +1,60 @@
+/* Copyright 2021 Adam Green (https://github.com/adamgreen/)
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+; Use the RP2040's PIO state machines to count quadrature encoder ticks.
+.program QuadratureDecoder
+
+; Must start at 0 so that the jump table which can be jumped into with a
+; 'mov pc, isr' instruction.
+.origin 0
+    ; 16 element jump table based on 4-bit encoder last state and current state.
+    jmp delta0      ; 00-00
+    jmp minus1      ; 00-01
+    jmp plus1       ; 00-10
+    jmp delta0      ; 00-11
+    jmp plus1       ; 01-00
+    jmp delta0      ; 01-01
+    jmp delta0      ; 01-10
+    jmp minus1      ; 01-11
+    jmp minus1      ; 10-00
+    jmp delta0      ; 10-01
+    jmp delta0      ; 10-10
+    jmp plus1       ; 10-11
+    jmp delta0      ; 11-00
+    jmp plus1       ; 11-01
+    jmp minus1      ; 11-10
+    jmp delta0      ; 11-11
+
+; Program actually starts here.
+.wrap_target
+delta0:
+public start:
+    mov isr, null       ; Clear the ISR.
+    in y, 2             ; Upper 2-bits of address are formed from previous encoder pin readings
+    mov y, pins         ; Lower 2-bits of address are formed from current encoder pin readings. Save in Y as well.
+    in y, 2
+    mov pc, isr         ; Jump into jump table which will then jump to delta0, minus1, or plus1 labels.
+minus1:
+    jmp x-- output      ; Decrement x
+    jmp output
+plus1:
+    mov x, ~x           ; Increment x by calculating x=~(~x - 1)
+    jmp x-- next2
+next2:
+    mov x, ~x
+output:
+    mov isr, x          ; Push out updated counter.
+    push noblock
+.wrap
