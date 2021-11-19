@@ -54,25 +54,25 @@ int32_t QuadratureDecoder::addQuadratureEncoder(uint32_t pinBase)
     pio_sm_config smConfig = QuadratureDecoder_program_get_default_config(programOffset);
 
     // Configure the state machine to run the quadrature decoder program.
-    const bool shiftRight = false;
-    const bool autoPush = false;
+    const bool shiftLeft = false;
+    const bool noAutoPush = false;
     const uint threshhold = 32;
     // We want the ISR to shift to right when the pin values are shifted in.
-    sm_config_set_in_shift(&smConfig, shiftRight, autoPush, threshhold);
+    sm_config_set_in_shift(&smConfig, shiftLeft, noAutoPush, threshhold);
     sm_config_set_in_pins(&smConfig, pinBase);
-    // Use the TX FIFO entries for RX since we don't use the TX path. This makes for a 8 element RX FIFO.
+    // Use the TX FIFO entries for RX since we don't use the TX path. This makes for an 8 element RX FIFO.
     sm_config_set_fifo_join(&smConfig, PIO_FIFO_JOIN_RX);
     pio_sm_init(m_pio, stateMachine, QuadratureDecoder_offset_start, &smConfig);
 
     int dmaChannel = dma_claim_unused_channel(false);
     if (dmaChannel < 0)
     {
-        // No ree DMA channels so return a failure code.
+        // No free DMA channels so return a failure code.
         return -1;
     }
     m_dmaChannels[stateMachine] = dmaChannel;
 
-    // Configure DMA to just read the latest count from the state machine RX FIFO and place it in the m_counters[]
+    // Configure DMA to just read the latest count from the state machine's RX FIFO and place it in the m_counters[]
     // element reserved for this encoder.
     dma_channel_config dmaConfig = dma_channel_get_default_config(dmaChannel);
     channel_config_set_read_increment(&dmaConfig, false);
@@ -94,7 +94,7 @@ int32_t QuadratureDecoder::addQuadratureEncoder(uint32_t pinBase)
     // Initialize the Y register to the current value of the pins.
     pio_sm_exec(m_pio, stateMachine, pio_encode_mov(pio_y, pio_pins));
 
-    // Now start the state machine to counting quadrature encoder ticks.
+    // Now start the state machine to count quadrature encoder ticks.
     pio_sm_set_enabled(m_pio, stateMachine, true);
 
     return stateMachine;
