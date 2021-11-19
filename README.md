@@ -18,7 +18,7 @@ The ```QuadratureDecoder``` C++ class can be used to count quadrature encoder si
 ## How it Works
 ### PIO
 ```asm
-; Must start at 0 so that the jump table which can be jumped into with a
+; Must start at 0 so that the following jump table can be jumped into with a
 ; 'mov pc, isr' instruction.
 .origin 0
     ; 16 element jump table based on 4-bit encoder last state and current state.
@@ -43,7 +43,7 @@ The ```QuadratureDecoder``` C++ class can be used to count quadrature encoder si
 .wrap_target
 delta0:
 public start:
-    mov isr, null       ; Clear the ISR.
+    mov isr, null       ; Make sure that the input shift register is cleared when table jumps to delta0.
     in y, 2             ; Upper 2-bits of address are formed from previous encoder pin readings
     mov y, pins         ; Lower 2-bits of address are formed from current encoder pin readings. Save in Y as well.
     in y, 2
